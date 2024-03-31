@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def crypto():
-    return render_template('crypto.html')
+    return render_template('index.html')
 
 
 @app.route('/api/cryptocurrencies', methods=['GET'])
