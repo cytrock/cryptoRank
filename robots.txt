@@ -1,0 +1,3 @@
+User-agent: *
+Disallow:
+Sitemap: https://cryptorank.pages.dev/sitemap.xml
