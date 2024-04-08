@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptocurrency Volume Rankings</title>
+    <style>
+        /* 在这里添加CSS样式 */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #35d2ca;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1 align="center">加密货币成交量排名</h1>
+        <table id="currencies-table">
+            <thead>
+                <tr>
+                    <th>币种名称</th>
+                    <th>当前价格</th>
+                    <th>24小时涨跌</th>
+                    <th>24小时成交量</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 表格数据将被动态填充 -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const apiURL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc';
+            fetch(apiURL)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#currencies-table tbody');
+                    data.forEach(currency => {
+                        const row = tableBody.insertRow();
+
+                        const nameCell = row.insertCell();
+                        const icon = document.createElement('img');
+                        icon.src = `${currency.image}`; // 假设 'image' 是图标URL的属性
+                        icon.alt = `${currency.name}`;
+                        icon.style.width = '20px'; // 设置图标大小
+                        icon.style.height = '20px'; // 设置图标大小
+                        icon.style.marginRight = '5px'; // 在图标和文本之间添加一点空间
+                        nameCell.appendChild(icon);
+                        nameCell.appendChild(document.createTextNode(`${currency.symbol.toUpperCase()}`));
+
+                        const priceCell = row.insertCell();
+                        priceCell.textContent = `${formatNumber(currency.current_price)}`;
+
+                        const changeCell = row.insertCell();
+                        changeCell.textContent = `${formatNumber(currency.price_change_percentage_24h)}%`;
+
+                        const volumeCell = row.insertCell();
+                        volumeCell.textContent = `${formatVolume(currency.total_volume)}`;
+
+
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+            })
+
+            function formatVolume(number) {
+                if (number < 1e6) {
+                    return number.toLocaleString();
+                } else {
+                    return `${(number / 1e6).toFixed(2)}M`;
+                }
+            }
+
+            function formatNumber(number) {
+                return number.toFixed(2);
+            }
+    </script>
+    <div style='display:none'> 
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-G7B9G41KET"></script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-G7B9G41KET');   
+    </div>
+</body>
+</html>
