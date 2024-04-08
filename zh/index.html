@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="zh">
-<label for="language-select">Choose a language:</label>
-<select id="language-select" onchange="location = this.value;">
-    <option value="/en/index.html">English</option>
-    <option value="/zh/index.html">中文</option>
-    <option value="/es/index.html">Español</option>
-    <option value="/fr/index.html">Français</option>
-    <option value="/de/index.html">Deutsch</option>
-    <option value="/ja/index.html">日本語</option>
-    <option value="/ko/index.html">한국어</option>
-    <option value="/ru/index.html">Русский</option>
-</select>
+<div id="language-select-container">
+    <label for="language-select">请选择语言:</label>
+    <select id="language-select" onchange="location = this.value;">
+        <option value="/en/index.html">English</option>
+        <option value="/zh/index.html">中文</option>
+        <option value="/es/index.html">Español</option>
+        <option value="/fr/index.html">Français</option>
+        <option value="/de/index.html">Deutsch</option>
+        <option value="/ja/index.html">日本語</option>
+        <option value="/ko/index.html">한국어</option>
+        <option value="/ru/index.html">Русский</option>
+    </select>
+    <br>
+    <a href="../usdt.jpg">请我喝杯咖啡</a>
+</div>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,13 +25,13 @@
             font-family: Arial, sans-serif;
             margin: 20px;
         }
-       language-select-container {
+       #language-select-container {
             position: fixed; /* 或absolute, 根据需求 */
             top: 0;
             right: 0;
             padding: 20px;
         }
-        language-select {
+        #language-select {
             margin-left: 10px;
         }
         table {
