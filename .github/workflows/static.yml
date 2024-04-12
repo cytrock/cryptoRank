@@ -22,14 +22,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # build:
-  #   runs-on: macos-latest
-  #   steps:
-  #   - name: build
-  #     run: |
-  #       docker -v
-  #       cat /etc/os-release
-  # Single deploy job since we're just deploying
   deploy:
     environment:
       name: github-pages
@@ -44,11 +36,11 @@ jobs:
         run: |
           system_profiler SPSoftwareDataType
           ifconfig
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          # Upload entire repository
-          path: '.'
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      # - name: Upload artifact
+      #   uses: actions/upload-pages-artifact@v3
+      #   with:
+      #     # Upload entire repository
+      #     path: '.'
+      # - name: Deploy to GitHub Pages
+      #   id: deployment
+      #   uses: actions/deploy-pages@v4
