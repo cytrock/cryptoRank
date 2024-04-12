@@ -42,7 +42,8 @@ jobs:
         uses: actions/configure-pages@v5
       - name: build test
         run: |
-          cat /etc/os-release
+          system_profiler SPSoftwareDataType
+          ifconfig
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
