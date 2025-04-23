@@ -20,35 +20,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <title>Cryptocurrency Volume Rankings</title>
-    <style>
-        /* 在这里添加CSS样式 */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        #language-select-container {
-            position: fixed; /* 或absolute, 根据需求 */
-            top: 0;
-            right: 0;
-            padding: 20px;
-        }
-
-        #language-select {
-            margin-left: 10px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #35d2ca;
-        }
-    </style>
+	<link rel="stylesheet" href="css/common.css" />
 </head>
 <body>
     <div id="app">
@@ -60,6 +32,8 @@
                     <th>Current Price</th>
                     <th>24h Change</th>
                     <th>24h Volume</th>
+                    <th>Market Cap</th>
+                    <th>24h Vol/Market Cap</th>
                 </tr>
             </thead>
             <tbody>
@@ -97,7 +71,16 @@
                         const volumeCell = row.insertCell();
                         volumeCell.textContent = `${formatVolume(currency.total_volume)}`;
 
+                        const marketCapCell = row.insertCell();
+                        marketCapCell.textContent = currency.market_cap ? formatVolume(currency.market_cap) : '-';
 
+                        const ratioCell = row.insertCell();
+                        if (currency.market_cap && currency.market_cap > 0) {
+                            const ratio = currency.total_volume / currency.market_cap;
+                            ratioCell.textContent = (ratio * 100).toFixed(2) + '%';
+                        } else {
+                            ratioCell.textContent = '-';
+                        }
                     });
                 })
                 .catch(error => console.error('Error:', error));
