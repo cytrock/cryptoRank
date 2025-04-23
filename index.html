@@ -29,11 +29,11 @@
             <thead>
                 <tr>
                     <th>CoinName</th>
-                    <th>Current Price</th>
-                    <th>24h Change</th>
-                    <th>24h Volume</th>
-                    <th>Market Cap</th>
-                    <th>24h Vol/Market Cap</th>
+                    <th id="th-price" style="cursor:pointer">Current Price</th>
+                    <th id="th-change" style="cursor:pointer">24h Change</th>
+                    <th id="th-volume" style="cursor:pointer">24h Volume</th>
+                    <th id="th-marketcap" style="cursor:pointer">Market Cap</th>
+                    <th id="th-ratio" style="cursor:pointer">24h Vol/Market Cap</th>
                 </tr>
             </thead>
             <tbody>
@@ -45,58 +45,115 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const apiURL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc';
+            let currenciesData = [];
+            let sortConfig = { key: null, asc: true };
+
+            function renderTable(data) {
+                const tableBody = document.querySelector('#currencies-table tbody');
+                tableBody.innerHTML = '';
+                data.forEach(currency => {
+                    const row = tableBody.insertRow();
+
+                    const nameCell = row.insertCell();
+                    const icon = document.createElement('img');
+                    icon.src = `${currency.image}`;
+                    icon.alt = `${currency.name}`;
+                    icon.style.width = '20px';
+                    icon.style.height = '20px';
+                    icon.style.marginRight = '5px';
+                    nameCell.appendChild(icon);
+                    nameCell.appendChild(document.createTextNode(`${currency.symbol.toUpperCase()}`));
+
+                    const priceCell = row.insertCell();
+                    priceCell.textContent = `${formatNumber(currency.current_price)}`;
+
+                    const changeCell = row.insertCell();
+                    changeCell.textContent = `${formatNumber(currency.price_change_percentage_24h)}%`;
+
+                    const volumeCell = row.insertCell();
+                    volumeCell.textContent = `${formatVolume(currency.total_volume)}`;
+
+                    const marketCapCell = row.insertCell();
+                    marketCapCell.textContent = currency.market_cap ? formatVolume(currency.market_cap) : '-';
+
+                    const ratioCell = row.insertCell();
+                    if (currency.market_cap && currency.market_cap > 0) {
+                        const ratio = currency.total_volume / currency.market_cap;
+                        ratioCell.textContent = (ratio * 100).toFixed(2) + '%';
+                    } else {
+                        ratioCell.textContent = '-';
+                    }
+                });
+            }
+
             fetch(apiURL)
                 .then(response => response.json())
                 .then(data => {
-                    const tableBody = document.querySelector('#currencies-table tbody');
-                    data.forEach(currency => {
-                        const row = tableBody.insertRow();
-
-                        const nameCell = row.insertCell();
-                        const icon = document.createElement('img');
-                        icon.src = `${currency.image}`; // 假设 'image' 是图标URL的属性
-                        icon.alt = `${currency.name}`;
-                        icon.style.width = '20px'; // 设置图标大小
-                        icon.style.height = '20px'; // 设置图标大小
-                        icon.style.marginRight = '5px'; // 在图标和文本之间添加一点空间
-                        nameCell.appendChild(icon);
-                        nameCell.appendChild(document.createTextNode(`${currency.symbol.toUpperCase()}`));
-
-                        const priceCell = row.insertCell();
-                        priceCell.textContent = `${formatNumber(currency.current_price)}`;
-
-                        const changeCell = row.insertCell();
-                        changeCell.textContent = `${formatNumber(currency.price_change_percentage_24h)}%`;
-
-                        const volumeCell = row.insertCell();
-                        volumeCell.textContent = `${formatVolume(currency.total_volume)}`;
-
-                        const marketCapCell = row.insertCell();
-                        marketCapCell.textContent = currency.market_cap ? formatVolume(currency.market_cap) : '-';
-
-                        const ratioCell = row.insertCell();
-                        if (currency.market_cap && currency.market_cap > 0) {
-                            const ratio = currency.total_volume / currency.market_cap;
-                            ratioCell.textContent = (ratio * 100).toFixed(2) + '%';
-                        } else {
-                            ratioCell.textContent = '-';
-                        }
-                    });
+                    currenciesData = data;
+                    renderTable(currenciesData);
                 })
                 .catch(error => console.error('Error:', error));
-            })
 
-            function formatVolume(number) {
-                if (number < 1e6) {
-                    return number.toLocaleString();
+            function sortTable(key, isRatio = false) {
+                if (sortConfig.key === key) {
+                    sortConfig.asc = !sortConfig.asc;
                 } else {
-                    return `${(number / 1e6).toFixed(2)}M`;
+                    sortConfig.key = key;
+                    sortConfig.asc = true;
                 }
+                let sorted = currenciesData.slice();
+                sorted.sort((a, b) => {
+                    let valA, valB;
+                    if (isRatio) {
+                        valA = a.market_cap && a.market_cap > 0 ? a.total_volume / a.market_cap : -Infinity;
+                        valB = b.market_cap && b.market_cap > 0 ? b.total_volume / b.market_cap : -Infinity;
+                    } else {
+                        valA = a[key] !== undefined && a[key] !== null ? a[key] : -Infinity;
+                        valB = b[key] !== undefined && b[key] !== null ? b[key] : -Infinity;
+                    }
+                    return sortConfig.asc ? valA - valB : valB - valA;
+                });
+                renderTable(sorted);
+                updateSortIndicators();
             }
 
-            function formatNumber(number) {
-                return number.toFixed(2);
+            function updateSortIndicators() {
+                const ths = [
+                    { id: 'th-price', key: 'current_price' },
+                    { id: 'th-change', key: 'price_change_percentage_24h' },
+                    { id: 'th-volume', key: 'total_volume' },
+                    { id: 'th-marketcap', key: 'market_cap' },
+                    { id: 'th-ratio', key: 'ratio' }
+                ];
+                ths.forEach(th => {
+                    const el = document.getElementById(th.id);
+                    if (!el) return;
+                    let text = el.textContent.replace(/[↑↓]/g, '');
+                    if ((sortConfig.key === th.key) || (th.key === 'ratio' && sortConfig.key === 'ratio')) {
+                        text += sortConfig.asc ? ' ↑' : ' ↓';
+                    }
+                    el.textContent = text;
+                });
             }
+
+            document.getElementById('th-price').onclick = () => sortTable('current_price');
+            document.getElementById('th-change').onclick = () => sortTable('price_change_percentage_24h');
+            document.getElementById('th-volume').onclick = () => sortTable('total_volume');
+            document.getElementById('th-marketcap').onclick = () => sortTable('market_cap');
+            document.getElementById('th-ratio').onclick = () => sortTable('ratio', true);
+        })
+
+        function formatVolume(number) {
+            if (number < 1e6) {
+                return number.toLocaleString();
+            } else {
+                return `${(number / 1e6).toFixed(2)}M`;
+            }
+        }
+
+        function formatNumber(number) {
+            return number.toFixed(2);
+        }
     </script>
     <div style='display:none'> 
         <!-- Google tag (gtag.js) -->
