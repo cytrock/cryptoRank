@@ -4,13 +4,13 @@
     <label for="language-select">Choose a language:</label>
     <select id="language-select" onchange="location = this.value;">
         <option value="/en/index.html">English</option>
-        <option value="/zh/index.html">中文</option>
-        <option value="/es/index.html">Español</option>
-        <option value="/fr/index.html">Français</option>
-        <option value="/de/index.html">Deutsch</option>
-        <option value="/ja/index.html">日本語</option>
-        <option value="/ko/index.html">한국어</option>
-        <option value="/ru/index.html">Русский</option>
+        <option value="/zh/index.html">Chinese</option>
+        <option value="/es/index.html">Spanish</option>
+        <option value="/fr/index.html">French</option>
+        <option value="/de/index.html">German</option>
+        <option value="/ja/index.html">Japanese</option>
+        <option value="/ko/index.html">Korean</option>
+        <option value="/ru/index.html">Russian</option>
     </select>
     <br>
     <a href="usdt.jpg">buy me a coffee</a>
@@ -28,26 +28,27 @@
         <table id="currencies-table">
             <thead>
                 <tr>
-                    <th>CoinName</th>
+                    <th>Coin Name</th>
                     <th id="th-price" style="cursor:pointer">Current Price</th>
                     <th id="th-change" style="cursor:pointer">24h Change</th>
-                    <th id="th-volume" style="cursor:pointer">合约持仓量</th>
+                    <th id="th-funding" style="cursor:pointer">Funding Rate</th>
+                    <th id="th-volume" style="cursor:pointer">Open Interest</th>
                     <th id="th-marketcap" style="cursor:pointer">Market Cap</th>
-                    <th id="th-ratio" style="cursor:pointer">合约持仓量/Market Cap</th>
+                    <th id="th-ratio" style="cursor:pointer">Open Interest/Market Cap</th>
                 </tr>
             </thead>
             <tbody>
-                <!-- 表格数据将被动态填充 -->
+                <!-- Table data will be dynamically filled -->
             </tbody>
         </table>
     </div>
 
     <script>
-        // Bybit symbol白名单（linear）
+        // Bybit symbol whitelist (linear)
         const bybitLinearSymbols = new Set([
             'BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','DOGEUSDT','LINKUSDT','ADAUSDT','BNBUSDT','OPUSDT','MATICUSDT','PEPEUSDT','SUIUSDT','FILUSDT','TONUSDT','ORDIUSDT','BCHUSDT','1000BONKUSDT','ARBUSDT','SEIUSDT','DOTUSDT','UNIUSDT','AVAXUSDT','APTUSDT','STXUSDT','TIAUSDT','ATOMUSDT','ETCUSDT','LTCUSDT','MEMEUSDT','WLDUSDT','ENAUSDT','BLURUSDT','DYDXUSDT','SHIBUSDT','JUPUSDT','INJUSDT','RNDRUSDT','GMTUSDT','FTMUSDT','MKRUSDT','LDOUSDT','AAVEUSDT','GMXUSDT','FLOWUSDT','SANDUSDT','IMXUSDT','MAVUSDT','GRTUSDT','CRVUSDT','SFPUSDT','SSVUSDT','YGGUSDT','RDNTUSDT','RUNEUSDT','LINAUSDT','BANDUSDT','IDUSDT','ONEUSDT','ZETAUSDT','WUSDT','BOMEUSDT','STRKUSDT','TUSDUSDT','TOMOUSDT','CKBUSDT','JASMYUSDT','1000SATSUSDT','1000FLOKIUSDT','1000SHIBUSDT'
         ]);
-        // Bybit symbol白名单（inverse）
+        // Bybit symbol whitelist (inverse)
         const bybitInverseSymbols = new Set([
             'BTCUSD','ETHUSD','BCHUSD','LTCUSD','XRPUSD','EOSUSD','ETCUSD','TRXUSD','LINKUSD','DOTUSD','ADAUSD','UNIUSD','FILUSD','DOGEUSD','SUSHIUSD','AAVEUSD','XEMUSD','XTZUSD','ATOMUSD','COMPUSD','MKRUSD','YFIUSD','AVAXUSD','CHZUSD','ALGOUSD','MATICUSD','NEARUSD','APEUSD','GMTUSD','DYDXUSD','OPUSD','ARBUSD','BLURUSD','IDUSD','SSVUSD','1000PEPEUSD','1000FLOKIUSD','1000SATSUSD','MEMEUSD'
         ]);
@@ -58,11 +59,11 @@
             let sortConfig = { key: null, asc: true };
 
             function getOpenInterest(symbol) {
-                // 判断 linear 还是 inverse
+                // Determine linear or inverse
                 let bybitUrl = null;
                 let bybitCategory = null;
                 let bybitParams = '';
-                // 计算最近5分钟区间的时间戳
+                // Calculate the last 5 minutes timestamp
                 const now = Date.now();
                 const fiveMin = 5 * 60 * 1000;
                 const endTime = now;
@@ -76,61 +77,76 @@
                     bybitParams = `category=${bybitCategory}&symbol=${symbol}&intervalTime=5min&startTime=${startTime}&endTime=${endTime}`;
                     bybitUrl = `https://api.bybit.com/v5/market/open-interest?${bybitParams}`;
                 }
-                console.log('请求持仓量', { symbol, bybitUrl });
+                console.log('Request open interest', { symbol, bybitUrl });
                 const binanceUrl = `https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=5m&limit=1`;
                 const binancePromise = fetch(binanceUrl).then(r => {
                     if (!r.ok) {
-                        console.warn('Binance接口错误', r.status);
+                        console.warn('Binance API error', r.status);
                         return null;
                     }
                     return r.json();
-                }).catch(e => { console.warn('Binance接口异常', e); return null; });
+                }).catch(e => { console.warn('Binance API exception', e); return null; });
                 let bybitPromise;
                 if (bybitUrl) {
                     bybitPromise = fetch(bybitUrl).then(r => {
                         if (!r.ok) {
-                            console.warn('Bybit接口错误', r.status);
+                            console.warn('Bybit API error', r.status);
                             return null;
                         }
                         return r.json();
-                    }).catch(e => { console.warn('Bybit接口异常', e); return null; });
+                    }).catch(e => { console.warn('Bybit API exception', e); return null; });
                 } else {
                     bybitPromise = Promise.resolve(null);
                 }
                 return Promise.all([binancePromise, bybitPromise]).then(([binanceData, bybitData]) => {
-                    console.log('Binance返回', binanceData);
-                    console.log('Bybit返回', bybitData);
+                    console.log('Binance response', binanceData);
+                    console.log('Bybit response', bybitData);
                     let binanceOI = 0;
                     let bybitOI = 0;
                     if (binanceData && Array.isArray(binanceData) && binanceData.length > 0) {
                         binanceOI = parseFloat(binanceData[binanceData.length - 1].openInterest || 0);
                     }
-                    // Bybit新版接口返回数据结构
+                    // Bybit new API response structure
                     if (bybitData && bybitData.result && bybitData.result.list && bybitData.result.list.length > 0) {
-                        // 取区间最后一项openInterest
+                        // Get the last item's open interest
                         const last = bybitData.result.list[bybitData.result.list.length - 1];
                         bybitOI = parseFloat(last.openInterest || 0);
                     }
                     return binanceOI + bybitOI;
-                }).catch(e => { console.warn('持仓量接口catch', e); return 0; });
+                }).catch(e => { console.warn('Open interest API catch', e); return 0; });
             }
 
             function getSymbolPair(currency) {
-                // 只支持USDT合约/主流USD本位合约
+                // Only support USDT contracts/mainstream USD-based contracts
                 const symbol = (currency.symbol || '').toUpperCase();
                 const mapping = {
                     WBTC: 'BTC',
                     BETH: 'ETH',
-                    // 可补充特殊币种映射
+                    // Add special coin mappings
                 };
-                // 优先USDT合约
+                // Prioritize USDT contracts
                 if (bybitLinearSymbols.has((mapping[symbol] || symbol) + 'USDT')) {
                     return (mapping[symbol] || symbol) + 'USDT';
                 } else if (bybitInverseSymbols.has((mapping[symbol] || symbol) + 'USD')) {
                     return (mapping[symbol] || symbol) + 'USD';
                 }
-                // 默认USDT合约
+                // Default to USDT contracts
                 return (mapping[symbol] || symbol) + 'USDT';
+            }
+
+            async function getFundingRate(symbol) {
+                try {
+                    const url = `https://fapi.binance.com/fapi/v1/fundingRate?symbol=${symbol}&limit=1`;
+                    const res = await fetch(url);
+                    if (!res.ok) return null;
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0 && data[0].fundingRate !== undefined) {
+                        return parseFloat(data[0].fundingRate);
+                    }
+                    return null;
+                } catch (e) {
+                    return null;
+                }
             }
 
             function renderTable(data) {
@@ -154,17 +170,27 @@
                     changeCell.textContent = (currency.price_change_percentage_24h || 0).toFixed(2) + '%';
                     changeCell.style.color = currency.price_change_percentage_24h >= 0 ? 'green' : 'red';
 
+                    const fundingCell = row.insertCell();
+                    fundingCell.textContent = 'Loading...';
+                    getFundingRate(currency.symbol ? currency.symbol.toUpperCase() + 'USDT' : (currency.id || '').toUpperCase() + 'USDT')
+                        .then(rate => {
+                            fundingCell.textContent = rate !== null ? (rate * 100).toFixed(4) + '%' : 'N/A';
+                        })
+                        .catch(() => {
+                            fundingCell.textContent = 'N/A';
+                        });
+
                     const oiCell = row.insertCell();
-                    oiCell.textContent = '加载中...';
+                    oiCell.textContent = 'Loading...';
                     const marketcapCell = row.insertCell();
                     marketcapCell.textContent = formatCurrency(currency.market_cap);
                     const ratioCell = row.insertCell();
-                    ratioCell.textContent = '加载中...';
+                    ratioCell.textContent = 'Loading...';
                     const symbolPair = getSymbolPair(currency);
-                    console.log('请求币种', currency.name, symbolPair);
+                    console.log('Request symbol', currency.name, symbolPair);
                     getOpenInterest(symbolPair).then(oi => {
                         oiCell.textContent = oi > 0 ? formatCurrency(oi) : 'N/A';
-                        // 合约持仓量/Market Cap
+                        // Open Interest/Market Cap
                         if (oi > 0 && currency.market_cap > 0) {
                             ratioCell.textContent = ((oi / currency.market_cap) * 100).toFixed(2) + '%';
                         } else {
@@ -212,6 +238,7 @@
                 const ths = [
                     { id: 'th-price', key: 'current_price' },
                     { id: 'th-change', key: 'price_change_percentage_24h' },
+                    { id: 'th-funding', key: 'funding_rate' },
                     { id: 'th-volume', key: 'total_volume' },
                     { id: 'th-marketcap', key: 'market_cap' },
                     { id: 'th-ratio', key: 'ratio' }
@@ -229,6 +256,7 @@
 
             document.getElementById('th-price').onclick = () => sortTable('current_price');
             document.getElementById('th-change').onclick = () => sortTable('price_change_percentage_24h');
+            document.getElementById('th-funding').onclick = () => sortTable('funding_rate');
             document.getElementById('th-volume').onclick = () => sortTable('total_volume');
             document.getElementById('th-marketcap').onclick = () => sortTable('market_cap');
             document.getElementById('th-ratio').onclick = () => sortTable('ratio', true);
