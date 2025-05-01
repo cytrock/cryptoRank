@@ -31,9 +31,9 @@
                     <th>CoinName</th>
                     <th id="th-price" style="cursor:pointer">Current Price</th>
                     <th id="th-change" style="cursor:pointer">24h Change</th>
-                    <th id="th-volume" style="cursor:pointer">24h Volume</th>
+                    <th id="th-volume" style="cursor:pointer">合约持仓量</th>
                     <th id="th-marketcap" style="cursor:pointer">Market Cap</th>
-                    <th id="th-ratio" style="cursor:pointer">24h Vol/Market Cap</th>
+                    <th id="th-ratio" style="cursor:pointer">合约持仓量/Market Cap</th>
                 </tr>
             </thead>
             <tbody>
@@ -43,15 +43,100 @@
     </div>
 
     <script>
+        // Bybit symbol白名单（linear）
+        const bybitLinearSymbols = new Set([
+            'BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','DOGEUSDT','LINKUSDT','ADAUSDT','BNBUSDT','OPUSDT','MATICUSDT','PEPEUSDT','SUIUSDT','FILUSDT','TONUSDT','ORDIUSDT','BCHUSDT','1000BONKUSDT','ARBUSDT','SEIUSDT','DOTUSDT','UNIUSDT','AVAXUSDT','APTUSDT','STXUSDT','TIAUSDT','ATOMUSDT','ETCUSDT','LTCUSDT','MEMEUSDT','WLDUSDT','ENAUSDT','BLURUSDT','DYDXUSDT','SHIBUSDT','JUPUSDT','INJUSDT','RNDRUSDT','GMTUSDT','FTMUSDT','MKRUSDT','LDOUSDT','AAVEUSDT','GMXUSDT','FLOWUSDT','SANDUSDT','IMXUSDT','MAVUSDT','GRTUSDT','CRVUSDT','SFPUSDT','SSVUSDT','YGGUSDT','RDNTUSDT','RUNEUSDT','LINAUSDT','BANDUSDT','IDUSDT','ONEUSDT','ZETAUSDT','WUSDT','BOMEUSDT','STRKUSDT','TUSDUSDT','TOMOUSDT','CKBUSDT','JASMYUSDT','1000SATSUSDT','1000FLOKIUSDT','1000SHIBUSDT'
+        ]);
+        // Bybit symbol白名单（inverse）
+        const bybitInverseSymbols = new Set([
+            'BTCUSD','ETHUSD','BCHUSD','LTCUSD','XRPUSD','EOSUSD','ETCUSD','TRXUSD','LINKUSD','DOTUSD','ADAUSD','UNIUSD','FILUSD','DOGEUSD','SUSHIUSD','AAVEUSD','XEMUSD','XTZUSD','ATOMUSD','COMPUSD','MKRUSD','YFIUSD','AVAXUSD','CHZUSD','ALGOUSD','MATICUSD','NEARUSD','APEUSD','GMTUSD','DYDXUSD','OPUSD','ARBUSD','BLURUSD','IDUSD','SSVUSD','1000PEPEUSD','1000FLOKIUSD','1000SATSUSD','MEMEUSD'
+        ]);
+
         document.addEventListener('DOMContentLoaded', function() {
             const apiURL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc';
             let currenciesData = [];
             let sortConfig = { key: null, asc: true };
 
+            function getOpenInterest(symbol) {
+                // 判断 linear 还是 inverse
+                let bybitUrl = null;
+                let bybitCategory = null;
+                let bybitParams = '';
+                // 计算最近5分钟区间的时间戳
+                const now = Date.now();
+                const fiveMin = 5 * 60 * 1000;
+                const endTime = now;
+                const startTime = now - fiveMin;
+                if (bybitLinearSymbols.has(symbol)) {
+                    bybitCategory = 'linear';
+                } else if (bybitInverseSymbols.has(symbol)) {
+                    bybitCategory = 'inverse';
+                }
+                if (bybitCategory) {
+                    bybitParams = `category=${bybitCategory}&symbol=${symbol}&intervalTime=5min&startTime=${startTime}&endTime=${endTime}`;
+                    bybitUrl = `https://api.bybit.com/v5/market/open-interest?${bybitParams}`;
+                }
+                console.log('请求持仓量', { symbol, bybitUrl });
+                const binanceUrl = `https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=5m&limit=1`;
+                const binancePromise = fetch(binanceUrl).then(r => {
+                    if (!r.ok) {
+                        console.warn('Binance接口错误', r.status);
+                        return null;
+                    }
+                    return r.json();
+                }).catch(e => { console.warn('Binance接口异常', e); return null; });
+                let bybitPromise;
+                if (bybitUrl) {
+                    bybitPromise = fetch(bybitUrl).then(r => {
+                        if (!r.ok) {
+                            console.warn('Bybit接口错误', r.status);
+                            return null;
+                        }
+                        return r.json();
+                    }).catch(e => { console.warn('Bybit接口异常', e); return null; });
+                } else {
+                    bybitPromise = Promise.resolve(null);
+                }
+                return Promise.all([binancePromise, bybitPromise]).then(([binanceData, bybitData]) => {
+                    console.log('Binance返回', binanceData);
+                    console.log('Bybit返回', bybitData);
+                    let binanceOI = 0;
+                    let bybitOI = 0;
+                    if (binanceData && Array.isArray(binanceData) && binanceData.length > 0) {
+                        binanceOI = parseFloat(binanceData[binanceData.length - 1].openInterest || 0);
+                    }
+                    // Bybit新版接口返回数据结构
+                    if (bybitData && bybitData.result && bybitData.result.list && bybitData.result.list.length > 0) {
+                        // 取区间最后一项openInterest
+                        const last = bybitData.result.list[bybitData.result.list.length - 1];
+                        bybitOI = parseFloat(last.openInterest || 0);
+                    }
+                    return binanceOI + bybitOI;
+                }).catch(e => { console.warn('持仓量接口catch', e); return 0; });
+            }
+
+            function getSymbolPair(currency) {
+                // 只支持USDT合约/主流USD本位合约
+                const symbol = (currency.symbol || '').toUpperCase();
+                const mapping = {
+                    WBTC: 'BTC',
+                    BETH: 'ETH',
+                    // 可补充特殊币种映射
+                };
+                // 优先USDT合约
+                if (bybitLinearSymbols.has((mapping[symbol] || symbol) + 'USDT')) {
+                    return (mapping[symbol] || symbol) + 'USDT';
+                } else if (bybitInverseSymbols.has((mapping[symbol] || symbol) + 'USD')) {
+                    return (mapping[symbol] || symbol) + 'USD';
+                }
+                // 默认USDT合约
+                return (mapping[symbol] || symbol) + 'USDT';
+            }
+
             function renderTable(data) {
                 const tableBody = document.querySelector('#currencies-table tbody');
                 tableBody.innerHTML = '';
-                data.forEach(currency => {
+                data.forEach(async currency => {
                     const row = tableBody.insertRow();
 
                     const nameCell = row.insertCell();
@@ -59,30 +144,36 @@
                     icon.src = `${currency.image}`;
                     icon.alt = `${currency.name}`;
                     icon.style.width = '20px';
-                    icon.style.height = '20px';
-                    icon.style.marginRight = '5px';
                     nameCell.appendChild(icon);
-                    nameCell.appendChild(document.createTextNode(`${currency.symbol.toUpperCase()}`));
+                    nameCell.appendChild(document.createTextNode(' ' + currency.name));
 
                     const priceCell = row.insertCell();
-                    priceCell.textContent = `${formatNumber(currency.current_price)}`;
+                    priceCell.textContent = formatCurrency(currency.current_price);
 
                     const changeCell = row.insertCell();
-                    changeCell.textContent = `${formatNumber(currency.price_change_percentage_24h)}%`;
+                    changeCell.textContent = (currency.price_change_percentage_24h || 0).toFixed(2) + '%';
+                    changeCell.style.color = currency.price_change_percentage_24h >= 0 ? 'green' : 'red';
 
-                    const volumeCell = row.insertCell();
-                    volumeCell.textContent = `${formatVolume(currency.total_volume)}`;
-
-                    const marketCapCell = row.insertCell();
-                    marketCapCell.textContent = currency.market_cap ? formatVolume(currency.market_cap) : '-';
-
+                    const oiCell = row.insertCell();
+                    oiCell.textContent = '加载中...';
+                    const marketcapCell = row.insertCell();
+                    marketcapCell.textContent = formatCurrency(currency.market_cap);
                     const ratioCell = row.insertCell();
-                    if (currency.market_cap && currency.market_cap > 0) {
-                        const ratio = currency.total_volume / currency.market_cap;
-                        ratioCell.textContent = (ratio * 100).toFixed(2) + '%';
-                    } else {
-                        ratioCell.textContent = '-';
-                    }
+                    ratioCell.textContent = '加载中...';
+                    const symbolPair = getSymbolPair(currency);
+                    console.log('请求币种', currency.name, symbolPair);
+                    getOpenInterest(symbolPair).then(oi => {
+                        oiCell.textContent = oi > 0 ? formatCurrency(oi) : 'N/A';
+                        // 合约持仓量/Market Cap
+                        if (oi > 0 && currency.market_cap > 0) {
+                            ratioCell.textContent = ((oi / currency.market_cap) * 100).toFixed(2) + '%';
+                        } else {
+                            ratioCell.textContent = 'N/A';
+                        }
+                    }).catch(() => {
+                        oiCell.textContent = 'N/A';
+                        ratioCell.textContent = 'N/A';
+                    });
                 });
             }
 
@@ -145,14 +236,34 @@
 
         function formatVolume(number) {
             if (number < 1e6) {
-                return number.toLocaleString();
+                return number.toLocaleString() + ' $';
             } else {
-                return `${(number / 1e6).toFixed(2)}M`;
+                return `${(number / 1e6).toFixed(2)}M $`;
             }
         }
 
         function formatNumber(number) {
-            return number.toFixed(2);
+            if (number >= 1e9) {
+                return (number / 1e9).toFixed(2) + 'B';
+            } else if (number >= 1e6) {
+                return (number / 1e6).toFixed(2) + 'M';
+            } else if (number >= 1e3) {
+                return (number / 1e3).toFixed(2) + 'K';
+            } else {
+                return number.toFixed(2);
+            }
+        }
+
+        function formatCurrency(number) {
+            if (number >= 1e9) {
+                return '$' + (number / 1e9).toFixed(2) + 'B';
+            } else if (number >= 1e6) {
+                return '$' + (number / 1e6).toFixed(2) + 'M';
+            } else if (number >= 1e3) {
+                return '$' + (number / 1e3).toFixed(2) + 'K';
+            } else {
+                return '$' + number.toFixed(2);
+            }
         }
     </script>
     <div style='display:none'> 
